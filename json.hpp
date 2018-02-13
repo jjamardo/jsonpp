@@ -139,11 +139,13 @@ any str2type(const std::string & str)
 			bool parse_error = false;
 			while (idx < s.size() && !parse_error)
 			{
-				unsigned int comma = s.find(',', idx);
+				std::size_t comma = s.find(',', idx);
 				if (comma == std::string::npos)
 				{
 					comma = s.size()-1;
 				}
+				std::cout << "s.size() " << s.size() << " comma " << comma << std::endl;
+				//std::cout << "s.size() " << s.size() << " comma " << comma << " s[comma] " << s[comma] << std::endl;
 				std::string e = s.substr(idx, comma - idx);
 				if (e.empty())
 				{
@@ -169,14 +171,36 @@ any str2type(const std::string & str)
 
 class Json
 {
-	static type_converter converter;
-
 	public:
+		Json() : inherited(false)
+		{
+			std::cout << "Json()" << std::endl;
+			//inherited = false;
+			converter = new type_converter();
+		}
+
+		~Json()
+		{
+			if (!inherited)
+			{
+				std::cout << "free: " << converter << std::endl;
+				delete converter;
+			}
+		}
+
+		Json& operator= (const Json& other)
+		{
+			std::cout << "operator=" << std::endl;
+			this->converter = other.converter;
+			this->inherited = true;
+			return *this;
+		}
+
 		Json& operator[] (std::string& key)
 		{
 			if (jmap.find(key) != jmap.end())
 			{
-				Json j;
+				Json j(converter);
 				jmap.insert(std::pair<std::string, Json>(key, j));
 			}
 			return jmap[key];
@@ -187,7 +211,7 @@ class Json
 			std::string key(ckey);
 			if (jmap.find(key) != jmap.end())
 			{
-				Json j;
+				Json j(converter);
 				jmap.insert(std::pair<std::string, Json>(key, j));
 			}
 			return jmap[key];
@@ -212,7 +236,8 @@ class Json
 			std::stringstream ss;
 			if (value)
 			{
-				any a = converter.convert(value);
+				any a = converter->convert(value);
+				std::cout << "type: " << a.type_info().name() << std::endl;
 				return any::as<std::string>(a);
 			}
 			ss << "{" << std::endl;
@@ -236,26 +261,32 @@ class Json
 			return ss.str();
 		}
 
-		static Json parse(const std::string& str)
+		Json& parse(const std::string& str)
 		{
 			int idx = 0;
 			std::string s = sanitize(str);
 			std::cout << s << std::endl;
-			return Json::parse(s, idx);
+			return parse(s, idx);
 		}
 
 		void add_conv(const std::type_info& t, any (* func)(any&))
 		{
 			std::cout << t.name() << std::endl;
-			converter.add_conv(t, func);
+			converter->add_conv(t, func);
 		}
 
 	private:
+		Json(type_converter* c) : inherited(true)
+		{
+			std::cout << "Json(type_converter)" << std::endl;
+			//inherited = true;
+			converter = c;
+		}
 
 		template <typename T>
 		std::string to_str(const T& t)
 		{
-			any a = converter.convert(t);
+			any a = converter->convert(t);
 			if (a.type_info() != typeid(std::string))
 			{
 				std::stringstream error;
@@ -266,11 +297,10 @@ class Json
 			return any::as<std::string>(a);
 		}
 
-		static Json parse(std::string& s, int& idx)
+		Json& parse(std::string& s, int& idx)
 		{
 			std::stringstream error;
 			error << "error parsing json \"" << s << "\" ";
-			Json j;
 			if (s[idx] != '{')
 			{
 				error << "must start with \"{\"";
@@ -282,7 +312,7 @@ class Json
 			{
 				if (s[idx] == '}')
 				{
-					return j;
+					return *this;
 				}
 
 				if (s[idx] == ',')
@@ -318,13 +348,14 @@ class Json
 				if (s[idx] == '{')
 				{
 					// parse object value
-					Json jd = parse(s, idx);
+					Json jd(converter);
+					jd.parse(s, idx);
 					if (s[idx] != '}')
 					{
 						throw bad_json("error parsing dictionary");
 					}
 					idx++;
-					j[key] = jd;
+					(*this)[key] = jd;
 				}
 				else
 				{
@@ -355,18 +386,19 @@ class Json
 						value += s[idx];
 						idx++;
 					}
-					Json jv;
+					Json jv(converter);
+					std::cout << "|"  << value << "|" << std::endl;
 					jv.value = str2type(value);
-					j[key] = jv;
+					(*this)[key] = jv;
 				}
 			}
 		}
 
+		bool inherited;
+		type_converter* converter;
 		std::map<std::string, Json> jmap;
 		any value;
 };
-
-type_converter Json::converter;
 
 std::ostream& operator<<(std::ostream& os, const Json& j)
 {

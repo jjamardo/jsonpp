@@ -12,6 +12,27 @@ std::string p_string(any& a)
 	return ss.str();
 }
 
+std::string p_vector(any& a)
+{
+	std::cout << "p_vector" << std::endl;
+	std::vector<any> v = any::as<std::vector<any> >(a);
+	std::stringstream ss;
+	ss << "[";
+	for (std::size_t i = 0; i < v.size(); ++i)
+	{
+		if (i < v.size() - 1)
+		{
+			std::cout << p_string(v[i]) << ",";
+		}
+		else
+		{
+			std::cout << p_string(v[i]);
+		}
+	}
+	ss << "]";
+	return ss.str();
+}
+
 std::string p_longint(any& a)
 {
 	std::cout << "p_longint" << std::endl;
@@ -65,7 +86,8 @@ int main(int argc, char* argv[])
 	}";
 	*/
 
-	Json j = Json::parse(s);
+	Json j;
+	j.parse(s);
 
 	std::cout << j << std::endl;
 
