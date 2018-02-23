@@ -27,172 +27,29 @@ class bad_json: public std::exception
 		std::string message;
 };
 
-std::string sanitize(const std::string & str)
-{
-	std::string s(str);
-	unsigned int idx = 0;
-	int start, end = 0;
-	while (idx != s.size())
-	{
-		switch (s[idx])
-		{
-		case '\"':
-			// scape strings
-			idx = s.find('\"', idx + 1) + 1;
-			break;
-		case ' ':
-			// remove white spaces.
-			start = idx;
-			end = idx;
-			while (s[end] == ' ')
-			{
-				end++;
-			}
-			s.erase(start, end - start);
-			break;
-		case '\n':
-		case '\t':
-		case '\v':
-		case '\a':
-		case '\b':
-		case '\f':
-		case '\r':
-			// remove special characters
-			s.erase(idx, 1);
-			break;
-		default:
-			// next character
-			idx++;
-			break;
-		}
-	}
-	return s;
-}
-
-any str2type(const std::string & str)
-{
-	std::string s = sanitize(str);
-	std::stringstream error;
-	error << "error parsing str to type \"" << s << "\" ";
-	switch (s[0])
-	{
-	case '-':
-	case '0':
-	case '1':
-	case '2':
-	case '3':
-	case '4':
-	case '5':
-	case '6':
-	case '7':
-	case '8':
-	case '9':
-		char* r;
-		// number
-		if (s.find('.') != std::string::npos)
-		{
-			// double
-			double n = strtod(s.c_str(), &r);
-			if (!*r)
-			{
-				return any(n);
-			}
-		}
-		else
-		{
-			// int
-			long int n = strtol(s.c_str(), &r, 0);
-			if (!*r)
-			{
-				return any(n);
-			}
-		}
-		error << "bad number";
-		break;
-	case 't':
-	case 'f':
-		// bool
-		if (s == "true")
-			return any(true);
-		else if (s == "false")
-			return any(false);
-		error << "bad boolean";
-		break;
-	case 'n':
-		// null
-		if (s == "null")
-			return any(0);
-		error << "bad null";
-		break;
-	case '\"':
-		// string
-		if (s[s.size() - 1] == '\"')
-			return any(s.substr(1,s.size()-2));
-		error << "bad string";
-		break;
-	case '[':
-		// array
-		if (s[s.size() - 1] == ']')
-		{
-			std::vector<any> v;
-			unsigned int idx = 1;
-			bool parse_error = false;
-			while (idx < s.size() && !parse_error)
-			{
-				std::size_t comma = s.find(',', idx);
-				if (comma == std::string::npos)
-				{
-					comma = s.size()-1;
-				}
-				std::cout << "s.size() " << s.size() << " comma " << comma << std::endl;
-				//std::cout << "s.size() " << s.size() << " comma " << comma << " s[comma] " << s[comma] << std::endl;
-				std::string e = s.substr(idx, comma - idx);
-				if (e.empty())
-				{
-					parse_error = true;
-					break;
-				}
-				v.push_back(str2type(e));
-				idx = comma + 1;
-			}
-			if (!parse_error)
-			{
-				return any(v);
-			}
-		}
-		error << "bad array";
-		break;
-	default:
-		error << "starting char \"" << s[0] << "\"" << " not valid";
-		break;
-	}
-	throw bad_json(error.str());
-}
-
 class Json
 {
 	public:
-		Json() : inherited(false)
+		Json()
 		{
-			std::cout << "Json()" << std::endl;
-			//inherited = false;
-			converter = new type_converter();
+			id = ++Json::sid;
+			converter = cvtr_manager::instance().add_conv(id);
 		}
 
 		~Json()
 		{
-			if (!inherited)
-			{
-				std::cout << "free: " << converter << std::endl;
-				delete converter;
-			}
+			//cvtr_manager::instance().rm_conv(id);
+			//converter = 0;
+			//id = 0;
 		}
 
 		Json& operator= (const Json& other)
 		{
-			std::cout << "operator=" << std::endl;
-			this->converter = other.converter;
-			this->inherited = true;
+			this->id = other.id;
+			this->value = other.value;
+			this->str_value = other.str_value;
+			this->jmap = other.jmap;
+			converter = cvtr_manager::instance().conv(id);
 			return *this;
 		}
 
@@ -200,7 +57,7 @@ class Json
 		{
 			if (jmap.find(key) != jmap.end())
 			{
-				Json j(converter);
+				Json j(id);
 				jmap.insert(std::pair<std::string, Json>(key, j));
 			}
 			return jmap[key];
@@ -211,7 +68,7 @@ class Json
 			std::string key(ckey);
 			if (jmap.find(key) != jmap.end())
 			{
-				Json j(converter);
+				Json j(id);
 				jmap.insert(std::pair<std::string, Json>(key, j));
 			}
 			return jmap[key];
@@ -221,6 +78,7 @@ class Json
 		{
 			std::string s(v);
 			value = any(s);
+			str_value = s;
 			return *this;
 		}
 
@@ -228,17 +86,17 @@ class Json
 		Json& operator=(const T& v)
 		{
 			value = any(v);
+			any a = converter->convert(v);
+			str_value = any::as<std::string>(a);
 			return *this;
 		}
 
 		std::string str() const
 		{
 			std::stringstream ss;
-			if (value)
+			if (!str_value.empty())
 			{
-				any a = converter->convert(value);
-				std::cout << "type: " << a.type_info().name() << std::endl;
-				return any::as<std::string>(a);
+				return str_value;
 			}
 			ss << "{" << std::endl;
 			std::map<std::string, Json>::const_iterator it = jmap.begin();
@@ -261,26 +119,30 @@ class Json
 			return ss.str();
 		}
 
+		any& tvalue() //TODO: Modif name
+		{
+			return value;
+		}
+
 		Json& parse(const std::string& str)
 		{
 			int idx = 0;
 			std::string s = sanitize(str);
-			std::cout << s << std::endl;
 			return parse(s, idx);
 		}
 
 		void add_conv(const std::type_info& t, any (* func)(any&))
 		{
-			std::cout << t.name() << std::endl;
 			converter->add_conv(t, func);
 		}
 
 	private:
-		Json(type_converter* c) : inherited(true)
+		static int sid;
+
+		Json(int id)
 		{
-			std::cout << "Json(type_converter)" << std::endl;
-			//inherited = true;
-			converter = c;
+			this->id = id;
+			converter = cvtr_manager::instance().conv(id);
 		}
 
 		template <typename T>
@@ -335,8 +197,6 @@ class Json
 				}
 				idx++;
 
-				std::cout << "key: " << key << std::endl;
-
 				// must be :
 				if (s[idx] != ':')
 				{
@@ -348,14 +208,14 @@ class Json
 				if (s[idx] == '{')
 				{
 					// parse object value
-					Json jd(converter);
+					Json jd(id);
 					jd.parse(s, idx);
 					if (s[idx] != '}')
 					{
 						throw bad_json("error parsing dictionary");
 					}
 					idx++;
-					(*this)[key] = jd;
+					jmap[key] = jd;
 				}
 				else
 				{
@@ -386,18 +246,210 @@ class Json
 						value += s[idx];
 						idx++;
 					}
-					Json jv(converter);
-					std::cout << "|"  << value << "|" << std::endl;
+					Json jv(id);
+					jv.str_value = value;
 					jv.value = str2type(value);
-					(*this)[key] = jv;
+					jmap[key] = jv;
 				}
 			}
 		}
 
-		bool inherited;
+		int id;
 		type_converter* converter;
 		std::map<std::string, Json> jmap;
 		any value;
+		std::string str_value;
+
+		class cvtr_manager
+		{
+			public:
+				static cvtr_manager& instance()
+				{
+					static cvtr_manager instance;
+					return instance;
+				}
+				type_converter* add_conv(int id)
+				{
+					std::map<int, type_converter*>::iterator it;
+					it = converters.find(id);
+					if (it != converters.end())
+					{
+						return it->second;
+					}
+					type_converter* c = new type_converter();
+					converters.insert(std::make_pair(id, c));
+					return c;
+				}
+				void rm_conv(int id)
+				{
+					std::map<int, type_converter*>::iterator it;
+					it = converters.find(id);
+					if (it != converters.end())
+					{
+						delete it->second;
+						converters.erase(it);
+					}
+				}
+				type_converter* conv(int id)
+				{
+					type_converter* c = 0;
+					std::map<int, type_converter*>::iterator it;
+					it = converters.find(id);
+					if (it != converters.end())
+					{
+						c = it->second;
+					}
+					return c;
+				}
+
+			private:
+				cvtr_manager()
+				{
+				}
+				cvtr_manager(cvtr_manager const&);
+				void operator=(cvtr_manager const&);
+				std::map<int, type_converter*> converters;
+		};
+
+		std::string sanitize(const std::string & str)
+		{
+			std::string s(str);
+			unsigned int idx = 0;
+			int start, end = 0;
+			while (idx != s.size())
+			{
+				switch (s[idx])
+				{
+					case '\"':
+						// scape strings
+						idx = s.find('\"', idx + 1) + 1;
+						break;
+					case ' ':
+						// remove white spaces.
+						start = idx;
+						end = idx;
+						while (s[end] == ' ')
+						{
+							end++;
+						}
+						s.erase(start, end - start);
+						break;
+					case '\n':
+					case '\t':
+					case '\v':
+					case '\a':
+					case '\b':
+					case '\f':
+					case '\r':
+						// remove special characters
+						s.erase(idx, 1);
+						break;
+					default:
+						// next character
+						idx++;
+						break;
+				}
+			}
+			return s;
+		}
+
+		any str2type(const std::string & str)
+		{
+			std::string s = sanitize(str);
+			std::stringstream error;
+			error << "error parsing str to type \"" << s << "\" ";
+			switch (s[0])
+			{
+				case '-':
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+					char* r;
+					// number
+					if (s.find('.') != std::string::npos)
+					{
+						// double
+						double n = strtod(s.c_str(), &r);
+						if (!*r)
+						{
+							return any(n);
+						}
+					}
+					else
+					{
+						// int
+						long int n = strtol(s.c_str(), &r, 0);
+						if (!*r)
+						{
+							return any(n);
+						}
+					}
+					error << "bad number";
+					break;
+				case 't':
+				case 'f':
+					// bool
+					if (s == "true")
+						return any(true);
+					else if (s == "false")
+						return any(false);
+					error << "bad boolean";
+					break;
+				case 'n':
+					// null
+					if (s == "null")
+						return any(0);
+					error << "bad null";
+					break;
+				case '\"':
+					// string
+					if (s[s.size() - 1] == '\"')
+						return any(s.substr(1,s.size()-2));
+					error << "bad string";
+					break;
+				case '[':
+					// array
+					if (s[s.size() - 1] == ']')
+					{
+						std::vector<any> v;
+						unsigned int idx = 1;
+						bool parse_error = false;
+						while (idx < s.size() && !parse_error)
+						{
+							std::size_t comma = s.find(',', idx);
+							if (comma == std::string::npos)
+							{
+								comma = s.size()-1;
+							}
+							std::string e = s.substr(idx, comma - idx);
+							if (e.empty())
+							{
+								parse_error = true;
+								break;
+							}
+							v.push_back(str2type(e));
+							idx = comma + 1;
+						}
+						if (!parse_error)
+						{
+							return any(v);
+						}
+					}
+					error << "bad array";
+					break;
+				default:
+					error << "starting char \"" << s[0] << "\"" << " not valid";
+					break;
+			}
+			throw bad_json(error.str());
+		}
 };
 
 std::ostream& operator<<(std::ostream& os, const Json& j)
@@ -405,5 +457,7 @@ std::ostream& operator<<(std::ostream& os, const Json& j)
 	os << j.str();
 	return os;
 }
+
+int Json::sid = 0;
 
 #endif

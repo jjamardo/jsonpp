@@ -3,16 +3,16 @@
 #include <fstream>
 
 
-std::string p_string(any& a)
+any p_string(any& a)
 {
 	std::cout << "p_string" << std::endl;
 	std::string s = any::as<std::string>(a);
 	std::stringstream ss;
 	ss << "\"" << s << "\"";
-	return ss.str();
+	return any(ss.str());
 }
 
-std::string p_vector(any& a)
+any p_vector(any& a)
 {
 	std::cout << "p_vector" << std::endl;
 	std::vector<any> v = any::as<std::vector<any> >(a);
@@ -30,24 +30,25 @@ std::string p_vector(any& a)
 		}
 	}
 	ss << "]";
-	return ss.str();
+	return any(ss.str());
 }
 
-std::string p_longint(any& a)
+any p_longint(any& a)
 {
 	std::cout << "p_longint" << std::endl;
 	long int i = any::as<long int>(a);
 	std::stringstream ss;
 	ss << i;
-	return ss.str();
+	return any(ss.str());
 }
 
 int main(int argc, char* argv[])
 {
-	//Json j;
+	Json j;
 
-	//j.add_converter(typeid(std::string), p_string);
-	//j.add_converter(typeid(long int), p_longint);
+	j.add_conv(typeid(std::string), p_string);
+	j.add_conv(typeid(long int), p_longint);
+	j.add_conv(typeid(std::vector<any>), p_vector);
 
 	//j["k1"] = 43.4f;
 	//j["k2"] = true;
@@ -68,28 +69,25 @@ int main(int argc, char* argv[])
 	std::stringstream buffer;
 	buffer << infile.rdbuf();
 	std::string s = buffer.str();
-
 	std::cout << s << std::endl;
 
-	/*
-	std::string s =
-	"{\
-		\"lastname\":\"Navaja\",\
-		\"name\":\"Pedro\",\
-		\"phone\":{\
-			\"cellphone\":\"123456\",\
-			\"tete\":{,\
-				\"totok\":\"totov\",\
-			}\
-			\"line\":\"456789\"\
-		}\
-	}";
-	*/
-
-	Json j;
 	j.parse(s);
 
 	std::cout << j << std::endl;
+
+	std::cout << "---------------------------------------" << std::endl;
+
+	any val = (j["glossary"]["GlossDiv"]["GlossList"]["GlossEntry"]["GlossDef"]["GlossSeeAlso"]).tvalue();
+	std::cout << val.type_info().name() << std::endl;
+	std::vector<any> v = any::as<std::vector<any> >(val);
+	std::vector<any>::const_iterator it = v.begin();
+
+	std::cout << "GlossSeeAlso: " << std::endl;
+	for(; it != v.end(); ++it)
+	{
+		std::string s = any::as<std::string>(*it);
+		std::cout << s << std::endl;
+	}
 
 	return 0;
 }
