@@ -32,24 +32,21 @@ class Json
 	public:
 		Json()
 		{
-			id = ++Json::sid;
-			converter = cvtr_manager::instance().add_conv(id);
+			id = cvtr_manager::instance().create();
 		}
 
 		~Json()
 		{
-			//cvtr_manager::instance().rm_conv(id);
-			//converter = 0;
-			//id = 0;
+			cvtr_manager::instance().remove(id);
+			id = 0;
 		}
 
 		Json& operator= (const Json& other)
 		{
-			this->id = other.id;
-			this->value = other.value;
-			this->str_value = other.str_value;
-			this->jmap = other.jmap;
-			converter = cvtr_manager::instance().conv(id);
+			id = other.id;
+			value = other.value;
+			str_value = other.str_value;
+			jmap = other.jmap;
 			return *this;
 		}
 
@@ -86,7 +83,7 @@ class Json
 		Json& operator=(const T& v)
 		{
 			value = any(v);
-			any a = converter->convert(v);
+			any a = cvtr_manager::instance().conv(id)->convert(v);
 			str_value = any::as<std::string>(a);
 			return *this;
 		}
@@ -133,22 +130,19 @@ class Json
 
 		void add_conv(const std::type_info& t, any (* func)(any&))
 		{
-			converter->add_conv(t, func);
+			cvtr_manager::instance().conv(id)->add_conv(t, func);
 		}
 
 	private:
-		static int sid;
-
 		Json(int id)
 		{
 			this->id = id;
-			converter = cvtr_manager::instance().conv(id);
 		}
 
 		template <typename T>
 		std::string to_str(const T& t)
 		{
-			any a = converter->convert(t);
+			any a = cvtr_manager::instance().conv(id)->convert(t);
 			if (a.type_info() != typeid(std::string))
 			{
 				std::stringstream error;
@@ -255,7 +249,6 @@ class Json
 		}
 
 		int id;
-		type_converter* converter;
 		std::map<std::string, Json> jmap;
 		any value;
 		std::string str_value;
@@ -268,26 +261,32 @@ class Json
 					static cvtr_manager instance;
 					return instance;
 				}
-				type_converter* add_conv(int id)
+				int create()
 				{
 					std::map<int, type_converter*>::iterator it;
 					it = converters.find(id);
 					if (it != converters.end())
 					{
-						return it->second;
+						return it->first;
 					}
+					id++;
+					refs++;
 					type_converter* c = new type_converter();
 					converters.insert(std::make_pair(id, c));
-					return c;
+					return id;
 				}
-				void rm_conv(int id)
+				void remove(int id)
 				{
 					std::map<int, type_converter*>::iterator it;
 					it = converters.find(id);
 					if (it != converters.end())
 					{
-						delete it->second;
-						converters.erase(it);
+						refs--;
+						if (refs == 0)
+						{
+							delete it->second;
+							converters.erase(it);
+						}
 					}
 				}
 				type_converter* conv(int id)
@@ -305,10 +304,14 @@ class Json
 			private:
 				cvtr_manager()
 				{
+					refs = 0;
+					id = 0;
 				}
 				cvtr_manager(cvtr_manager const&);
 				void operator=(cvtr_manager const&);
 				std::map<int, type_converter*> converters;
+				unsigned int refs;
+				int id;
 		};
 
 		std::string sanitize(const std::string & str)
@@ -457,7 +460,5 @@ std::ostream& operator<<(std::ostream& os, const Json& j)
 	os << j.str();
 	return os;
 }
-
-int Json::sid = 0;
 
 #endif
