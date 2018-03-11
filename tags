@@ -1,0 +1,67 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+Json	json.hpp	/^        Json()$/;"	f	class:Json
+Json	json.hpp	/^        Json(type_converter* c)$/;"	f	class:Json
+Json	json.hpp	/^class Json$/;"	c
+_ANYTYPE_	any.hpp	2;"	d
+_TINYJSON_	json.hpp	2;"	d
+_TYPE_CONVERTER_	typeconv.hpp	2;"	d
+add_conv	json.hpp	/^        void add_conv(const std::type_info& t, any (* func)(any&))$/;"	f	class:Json
+add_conv	typeconv.hpp	/^		void add_conv(const std::type_info& t, any (* func)(any&))$/;"	f	class:type_converter
+any	any.hpp	/^		any() : content(0)$/;"	f	class:any
+any	any.hpp	/^		any(const any &other)$/;"	f	class:any
+any	any.hpp	/^		template<typename T> any(const T &value)$/;"	f	class:any
+any	any.hpp	/^class any$/;"	c
+as	any.hpp	/^		static T as(const any &operand)$/;"	f	class:any
+bad_json	json.hpp	/^        bad_json(const std::string & m) : message(m)$/;"	f	class:bad_json
+bad_json	json.hpp	/^class bad_json: public std::exception$/;"	c
+clone	any.hpp	/^				virtual placeholder *clone() const$/;"	f	class:any::holder
+content	any.hpp	/^		placeholder *content;$/;"	m	class:any
+convert	typeconv.hpp	/^		any convert(const T& t)$/;"	f	class:type_converter
+converters	typeconv.hpp	/^		converters_map converters;$/;"	m	class:type_converter
+converters_it	typeconv.hpp	10;"	d
+converters_map	typeconv.hpp	9;"	d
+copy_to	any.hpp	/^		bool copy_to(T &value) const$/;"	f	class:any
+empty	any.hpp	/^		bool empty() const$/;"	f	class:any
+held	any.hpp	/^				const T held;$/;"	m	class:any::holder
+holder	any.hpp	/^				holder(const T &value) : held(value)$/;"	f	class:any::holder
+holder	any.hpp	/^		class holder : public placeholder$/;"	c	class:any
+m_converter	json.hpp	/^        type_converter* m_converter;$/;"	m	class:Json
+m_inherited	json.hpp	/^        bool m_inherited;$/;"	m	class:Json
+m_jmap	json.hpp	/^        std::map<std::string, Json*> m_jmap;$/;"	m	class:Json
+m_str_value	json.hpp	/^        std::string m_str_value;$/;"	m	class:Json
+m_value	json.hpp	/^        any m_value;$/;"	m	class:Json
+main	main.cpp	/^int main(int argc, char* argv[])$/;"	f
+message	json.hpp	/^        std::string message;$/;"	m	class:bad_json
+operator <<	json.hpp	/^std::ostream& operator<<(std::ostream& os, const Json& j)$/;"	f
+operator =	any.hpp	/^		any &operator=(const any &rhs)$/;"	f	class:any
+operator =	any.hpp	/^		template<typename T> any &operator=(const T &rhs)$/;"	f	class:any
+operator =	json.hpp	/^        Json& operator=(const T& v)$/;"	f	class:Json
+operator =	json.hpp	/^        Json& operator=(const char* v)$/;"	f	class:Json
+operator []	json.hpp	/^        Json& operator[] (const char* ckey)$/;"	f	class:Json
+operator []	json.hpp	/^        Json& operator[] (std::string& key)$/;"	f	class:Json
+operator const void *	any.hpp	/^		operator const void *() const$/;"	f	class:any
+p_longint	main.cpp	/^any p_longint(any& a)$/;"	f
+p_string	main.cpp	/^any p_string(any& a)$/;"	f
+p_vector	main.cpp	/^any p_vector(any& a)$/;"	f
+parse	json.hpp	/^        Json& parse(const std::string& str)$/;"	f	class:Json
+parse	json.hpp	/^        Json& parse(std::string& s, int& idx)$/;"	f	class:Json
+placeholder	any.hpp	/^		class placeholder$/;"	c	class:any
+sanitize	json.hpp	/^        std::string sanitize(const std::string & str)$/;"	f	class:Json
+str	json.hpp	/^        std::string str() const$/;"	f	class:Json
+str2type	json.hpp	/^        any str2type(const std::string & str)$/;"	f	class:Json
+swap	any.hpp	/^		any &swap(any &rhs)$/;"	f	class:any
+to_ptr	any.hpp	/^		const T *to_ptr() const$/;"	f	class:any
+type_converter	typeconv.hpp	/^class type_converter$/;"	c
+type_info	any.hpp	/^				virtual const std::type_info &type_info() const$/;"	f	class:any::holder
+type_info	any.hpp	/^		const std::type_info &type_info() const$/;"	f	class:any
+value	json.hpp	/^        any& value()$/;"	f	class:Json
+what	json.hpp	/^        virtual const char* what() const throw()$/;"	f	class:bad_json
+~Json	json.hpp	/^        ~Json()$/;"	f	class:Json
+~any	any.hpp	/^		~any()$/;"	f	class:any
+~bad_json	json.hpp	/^        virtual ~bad_json() throw()$/;"	f	class:bad_json
+~placeholder	any.hpp	/^				virtual ~placeholder()$/;"	f	class:any::placeholder
