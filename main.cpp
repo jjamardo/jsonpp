@@ -78,7 +78,6 @@ int main(int argc, char* argv[])
 	std::cout << "---------------------------------------" << std::endl;
 
 	any val = (j["glossary"]["GlossDiv"]["GlossList"]["GlossEntry"]["GlossDef"]["GlossSeeAlso"]).tvalue();
-	std::cout << val.type_info().name() << std::endl;
 	std::vector<any> v = any::as<std::vector<any> >(val);
 	std::vector<any>::const_iterator it = v.begin();
 

@@ -32,43 +32,45 @@ class Json
 	public:
 		Json()
 		{
-			id = cvtr_manager::instance().create();
+			inherited = false;
+			converter = new type_converter();
 		}
 
 		~Json()
 		{
-			cvtr_manager::instance().remove(id);
-			id = 0;
-		}
+			std::map<std::string, Json*>::const_iterator it = jmap.begin();
+			for (; it != jmap.end(); ++it)
+			{
+				delete it->second;
+			}
+			jmap.clear();
 
-		Json& operator= (const Json& other)
-		{
-			id = other.id;
-			value = other.value;
-			str_value = other.str_value;
-			jmap = other.jmap;
-			return *this;
+			if (!inherited)
+			{
+				delete converter;
+			}
+			converter = 0;
 		}
 
 		Json& operator[] (std::string& key)
 		{
-			if (jmap.find(key) != jmap.end())
+			if (jmap.find(key) == jmap.end())
 			{
-				Json j(id);
-				jmap.insert(std::pair<std::string, Json>(key, j));
+				Json* j = new Json(converter);
+				jmap.insert(std::pair<std::string, Json*>(key, j));
 			}
-			return jmap[key];
+			return *(jmap[key]);
 		}
 
 		Json& operator[] (const char* ckey)
 		{
 			std::string key(ckey);
-			if (jmap.find(key) != jmap.end())
+			if (jmap.find(key) == jmap.end())
 			{
-				Json j(id);
-				jmap.insert(std::pair<std::string, Json>(key, j));
+				Json* j = new Json(converter);
+				jmap.insert(std::pair<std::string, Json*>(key, j));
 			}
-			return jmap[key];
+			return *(jmap[key]);
 		}
 
 		Json& operator=(const char* v)
@@ -83,7 +85,7 @@ class Json
 		Json& operator=(const T& v)
 		{
 			value = any(v);
-			any a = cvtr_manager::instance().conv(id)->convert(v);
+			any a = converter->convert(v);
 			str_value = any::as<std::string>(a);
 			return *this;
 		}
@@ -96,13 +98,13 @@ class Json
 				return str_value;
 			}
 			ss << "{" << std::endl;
-			std::map<std::string, Json>::const_iterator it = jmap.begin();
+			std::map<std::string, Json*>::const_iterator it = jmap.begin();
 			int count = jmap.size();
 			for(; it != jmap.end(); ++it)
 			{
 				count--;
 				ss << "\"" << it->first << "\"" << ":";
-				ss << (it->second).str();
+				ss << it->second->str();
 				if (count)
 				{
 					ss << "," << std::endl;
@@ -130,19 +132,20 @@ class Json
 
 		void add_conv(const std::type_info& t, any (* func)(any&))
 		{
-			cvtr_manager::instance().conv(id)->add_conv(t, func);
+			converter->add_conv(t, func);
 		}
 
 	private:
-		Json(int id)
+		Json(type_converter* c)
 		{
-			this->id = id;
+			converter = c;
+			inherited = true;
 		}
 
 		template <typename T>
 		std::string to_str(const T& t)
 		{
-			any a = cvtr_manager::instance().conv(id)->convert(t);
+			any a = converter->convert(t);
 			if (a.type_info() != typeid(std::string))
 			{
 				std::stringstream error;
@@ -202,8 +205,8 @@ class Json
 				if (s[idx] == '{')
 				{
 					// parse object value
-					Json jd(id);
-					jd.parse(s, idx);
+					Json* jd = new Json(converter);
+					jd->parse(s, idx);
 					if (s[idx] != '}')
 					{
 						throw bad_json("error parsing dictionary");
@@ -240,79 +243,19 @@ class Json
 						value += s[idx];
 						idx++;
 					}
-					Json jv(id);
-					jv.str_value = value;
-					jv.value = str2type(value);
+					Json* jv = new Json(converter);
+					jv->str_value = value;
+					jv->value = str2type(value);
 					jmap[key] = jv;
 				}
 			}
 		}
 
-		int id;
-		std::map<std::string, Json> jmap;
+		bool inherited;
+		type_converter* converter;
+		std::map<std::string, Json*> jmap;
 		any value;
 		std::string str_value;
-
-		class cvtr_manager
-		{
-			public:
-				static cvtr_manager& instance()
-				{
-					static cvtr_manager instance;
-					return instance;
-				}
-				int create()
-				{
-					std::map<int, type_converter*>::iterator it;
-					it = converters.find(id);
-					if (it != converters.end())
-					{
-						return it->first;
-					}
-					id++;
-					refs++;
-					type_converter* c = new type_converter();
-					converters.insert(std::make_pair(id, c));
-					return id;
-				}
-				void remove(int id)
-				{
-					std::map<int, type_converter*>::iterator it;
-					it = converters.find(id);
-					if (it != converters.end())
-					{
-						refs--;
-						if (refs == 0)
-						{
-							delete it->second;
-							converters.erase(it);
-						}
-					}
-				}
-				type_converter* conv(int id)
-				{
-					type_converter* c = 0;
-					std::map<int, type_converter*>::iterator it;
-					it = converters.find(id);
-					if (it != converters.end())
-					{
-						c = it->second;
-					}
-					return c;
-				}
-
-			private:
-				cvtr_manager()
-				{
-					refs = 0;
-					id = 0;
-				}
-				cvtr_manager(cvtr_manager const&);
-				void operator=(cvtr_manager const&);
-				std::map<int, type_converter*> converters;
-				unsigned int refs;
-				int id;
-		};
 
 		std::string sanitize(const std::string & str)
 		{
