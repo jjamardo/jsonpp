@@ -46,9 +46,9 @@ int main(int argc, char* argv[])
 {
 	Json j;
 
-	j.add_conv(typeid(std::string), p_string);
-	j.add_conv(typeid(long int), p_longint);
-	j.add_conv(typeid(std::vector<any>), p_vector);
+	//j.add_conv(typeid(std::string), p_string);
+	//j.add_conv(typeid(long int), p_longint);
+	//j.add_conv(typeid(std::vector<any>), p_vector);
 
 	//j["k1"] = 43.4f;
 	//j["k2"] = true;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
 
 	std::cout << "---------------------------------------" << std::endl;
 
-	any val = (j["glossary"]["GlossDiv"]["GlossList"]["GlossEntry"]["GlossDef"]["GlossSeeAlso"]).tvalue();
+	any val = (j["glossary"]["GlossDiv"]["GlossList"]["GlossEntry"]["GlossDef"]["GlossSeeAlso"]).value();
 	std::vector<any> v = any::as<std::vector<any> >(val);
 	std::vector<any>::const_iterator it = v.begin();
 

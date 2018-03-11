@@ -32,75 +32,75 @@ class Json
 	public:
 		Json()
 		{
-			inherited = false;
-			converter = new type_converter();
+			m_inherited = false;
+			m_converter = new type_converter();
 		}
 
 		~Json()
 		{
-			std::map<std::string, Json*>::const_iterator it = jmap.begin();
-			for (; it != jmap.end(); ++it)
+			std::map<std::string, Json*>::const_iterator it = m_jmap.begin();
+			for (; it != m_jmap.end(); ++it)
 			{
 				delete it->second;
 			}
-			jmap.clear();
+			m_jmap.clear();
 
-			if (!inherited)
+			if (!m_inherited)
 			{
-				delete converter;
+				delete m_converter;
 			}
-			converter = 0;
+			m_converter = 0;
 		}
 
 		Json& operator[] (std::string& key)
 		{
-			if (jmap.find(key) == jmap.end())
+			if (m_jmap.find(key) == m_jmap.end())
 			{
-				Json* j = new Json(converter);
-				jmap.insert(std::pair<std::string, Json*>(key, j));
+				Json* j = new Json(m_converter);
+				m_jmap.insert(std::pair<std::string, Json*>(key, j));
 			}
-			return *(jmap[key]);
+			return *(m_jmap[key]);
 		}
 
 		Json& operator[] (const char* ckey)
 		{
 			std::string key(ckey);
-			if (jmap.find(key) == jmap.end())
+			if (m_jmap.find(key) == m_jmap.end())
 			{
-				Json* j = new Json(converter);
-				jmap.insert(std::pair<std::string, Json*>(key, j));
+				Json* j = new Json(m_converter);
+				m_jmap.insert(std::pair<std::string, Json*>(key, j));
 			}
-			return *(jmap[key]);
+			return *(m_jmap[key]);
 		}
 
 		Json& operator=(const char* v)
 		{
 			std::string s(v);
-			value = any(s);
-			str_value = s;
+			m_value = any(s);
+			m_str_value = s;
 			return *this;
 		}
 
 		template <typename T>
 		Json& operator=(const T& v)
 		{
-			value = any(v);
-			any a = converter->convert(v);
-			str_value = any::as<std::string>(a);
+			m_value = any(v);
+			any a = m_converter->convert(v);
+			m_str_value = any::as<std::string>(a);
 			return *this;
 		}
 
 		std::string str() const
 		{
 			std::stringstream ss;
-			if (!str_value.empty())
+			if (!m_str_value.empty())
 			{
-				return str_value;
+				return m_str_value;
 			}
 			ss << "{" << std::endl;
-			std::map<std::string, Json*>::const_iterator it = jmap.begin();
-			int count = jmap.size();
-			for(; it != jmap.end(); ++it)
+			std::map<std::string, Json*>::const_iterator it = m_jmap.begin();
+			int count = m_jmap.size();
+			for(; it != m_jmap.end(); ++it)
 			{
 				count--;
 				ss << "\"" << it->first << "\"" << ":";
@@ -118,9 +118,9 @@ class Json
 			return ss.str();
 		}
 
-		any& tvalue() //TODO: Modif name
+		any& value()
 		{
-			return value;
+			return m_value;
 		}
 
 		Json& parse(const std::string& str)
@@ -132,20 +132,20 @@ class Json
 
 		void add_conv(const std::type_info& t, any (* func)(any&))
 		{
-			converter->add_conv(t, func);
+			m_converter->add_conv(t, func);
 		}
 
 	private:
 		Json(type_converter* c)
 		{
-			converter = c;
-			inherited = true;
+			m_converter = c;
+			m_inherited = true;
 		}
 
 		template <typename T>
 		std::string to_str(const T& t)
 		{
-			any a = converter->convert(t);
+			any a = m_converter->convert(t);
 			if (a.type_info() != typeid(std::string))
 			{
 				std::stringstream error;
@@ -205,57 +205,57 @@ class Json
 				if (s[idx] == '{')
 				{
 					// parse object value
-					Json* jd = new Json(converter);
+					Json* jd = new Json(m_converter);
 					jd->parse(s, idx);
 					if (s[idx] != '}')
 					{
 						throw bad_json("error parsing dictionary");
 					}
 					idx++;
-					jmap[key] = jd;
+					m_jmap[key] = jd;
 				}
 				else
 				{
 					// parse type value
-					std::string value("");
+					std::string v("");
 					if (s[idx] == '\"')
 					{
-						value += s[idx];
+						v += s[idx];
 						idx++;
 						while (s[idx] != '\"')
 						{
-							value += s[idx];
+							v += s[idx];
 							idx++;
 						}
 					}
 					if (s[idx] == '[')
 					{
-						value += s[idx];
+						v += s[idx];
 						idx++;
 						while (s[idx] != ']')
 						{
-							value += s[idx];
+							v += s[idx];
 							idx++;
 						}
 					}
 					while (s[idx] != ',' && s[idx] != '}')
 					{
-						value += s[idx];
+						v += s[idx];
 						idx++;
 					}
-					Json* jv = new Json(converter);
-					jv->str_value = value;
-					jv->value = str2type(value);
-					jmap[key] = jv;
+					Json* jv = new Json(m_converter);
+					jv->m_str_value = v;
+					jv->m_value = str2type(v);
+					m_jmap[key] = jv;
 				}
 			}
 		}
 
-		bool inherited;
-		type_converter* converter;
-		std::map<std::string, Json*> jmap;
-		any value;
-		std::string str_value;
+		bool m_inherited;
+		type_converter* m_converter;
+		std::map<std::string, Json*> m_jmap;
+		any m_value;
+		std::string m_str_value;
 
 		std::string sanitize(const std::string & str)
 		{
